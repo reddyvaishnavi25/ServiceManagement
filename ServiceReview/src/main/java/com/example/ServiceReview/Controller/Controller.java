@@ -18,7 +18,7 @@ import com.example.ServiceReview.Entity.*;
 			
 			return Stream.of(new Customer(1, "vaishnavi", "reddy", "vasihu@gmail.com", 1234),
 					new Customer(2, "surya", "gouthu", "surya@gmail.com", 2345),
-					new Customer(3, "mrudulaa", "reddy", "mrudula@gmail.com", 3456)).collect(Collectors.toList());
+					new Customer(3, "mrudula", "reddy", "mrudula@gmail.com", 3456)).collect(Collectors.toList());
 			
 	}
 }
