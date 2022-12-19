@@ -1,15 +1,17 @@
 package com.example.ServiceReview.Controller;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.example.ServiceReview.repo.AddressRepository;
+import com.example.ServiceReview.repo.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.ServiceReview.Entity.*;
 
@@ -18,55 +20,159 @@ import com.example.ServiceReview.Entity.*;
 	public class Controller {
 
 	@Autowired
-	public AddressRepository addressRepo;
+	private CustomerRepository customerRepository;
+	@Autowired
+	private AddressRepository addressRepository;
 
-		@GetMapping("/Address")
-		public List<Address> getCustomerDetails(){
-			
-//			return Stream.of(new Customer(1, "vaishnavi", "reddy", "vasihu@gmail.com", 1234),
-//					new Customer(2, "surya", "gouthu", "surya@gmail.com", 2345),
-//					new Customer(3, "mrudula", "reddy", "mrudula@gmail.com", 3456)).collect(Collectors.toList());
-
+	@PostMapping("/add/customer")
+	public ResponseEntity<Customer> saveCustomerDetails(@RequestBody Customer customerDetails) {
+		try{
 			Customer customer= new Customer();
-
-			customer.customerId=1;
-			customer.first_name="Vaishnavi";
-			customer.last_name="Vundyala";
-			customer.email="abc@gmail.com";
-			customer.phone=1235467887;
-
-			Address address1 = new Address();
-			address1.addressId=1;
-			address1.customer=customer;
-			address1.streetAddress="18418 Dearborn St.";
-			address1.city="Northridge";
-			address1.country="USA";
-			address1.state="CA";
-			address1.zip=91325;
-
-			Address address2 = new Address();
-			address2.addressId=2;
-			address2.customer=customer;
-			address2.streetAddress="9151 Darby Ave";
-			address2.city="North Carolina";
-			address2.state="NC";
-			address2.country="USA";
-			address2.zip=91326;
-
-			List<Address> l=new ArrayList<>();
-			l.add(address1);
-			l.add(address2);
-
-			return addressRepo.saveAll(l);
-
+			customer.setFirstName(customerDetails.getFirstName());
+			customer.setLastName(customerDetails.getLastName());
+			customer.setEmailId(customerDetails.getEmailId());
+			customer.setPhoneNumber(customerDetails.getPhoneNumber());
+			Customer response = customerRepository.save(customer);
+			return Objects.nonNull(response) ? ResponseEntity.ok(response) : new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}catch (Exception e) {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
-
-	@GetMapping("addressdetails/{addId}")
-	public Address addressDetails(@PathVariable int addId){
-			return addressRepo.findById(addId).get();
 	}
 
+		@PostMapping("/add/address")
+		public ResponseEntity<List<Address>> saveCustomerDetails(@RequestBody CustomerAddressModel customerAddressDetails){
+		try{
+			Optional<Customer> customerDetails = customerRepository.findById(customerAddressDetails.customerId);
+			if(Objects.nonNull(customerDetails)) {
+				List<Address> addressDetailsList = customerAddressDetails.addressDetails;
+				List<Address> addressList = new ArrayList<>();
+				if(Objects.nonNull(addressDetailsList) && addressDetailsList.size() > 0) {
+					addressDetailsList.stream().forEach((rec) -> {
+						Address address = new Address();
+						address.setAddressId(null);
+						address.setCustomer(customerDetails.isEmpty() ? null : customerDetails.get());
+						address.setStreetAddress(rec.getStreetAddress());
+						address.setCity(rec.getCity());
+						address.setCountry(rec.getCountry());
+						address.setState(rec.getState());
+						address.setZip(rec.getZip());
+						addressList.add(address);
+						addressRepository.save(address);
+					});
+					return addressList.size() > 0 ? ResponseEntity.ok(addressList) : new ResponseEntity<>(HttpStatus.NO_CONTENT);
+			}
+				return addressList.size() > 0 ? ResponseEntity.ok(addressList) : new ResponseEntity<>(HttpStatus.NO_CONTENT);
+			}
+			return null;
+		}catch (Exception e) {
+			return null;
+		}
+		}
 
+	@GetMapping("/address/details")
+	public List<Address> addressDetails(@RequestParam Integer customerId){
+		try{
+			return addressRepository.findAllByCustomerCustomerId(customerId);
+		}catch (Exception e) {
+			return null;
+		}
+	}
+
+	@PutMapping("/update/customer")
+	public ResponseEntity<Customer> updateCustomerDetails(@RequestBody Customer customerDetails) {
+			try{
+				if(Objects.nonNull(customerDetails)) {
+					Optional<Customer> customerResponse = customerRepository.findById(customerDetails.customerId);
+					if (Objects.nonNull(customerResponse)) {
+						customerRepository.save(customerDetails);
+					return ResponseEntity.ok(customerDetails);
+					}
+					return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+				}
+			}catch (Exception e) {
+				return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+			}
+		return null;
+	}
+
+	@PutMapping("/update/address")
+	public ResponseEntity<String> updateAddressDetails(@RequestBody CustomerAddressModel customerAddressDetails) {
+		try{
+			Optional<Customer> customerDetails = customerRepository.findById(customerAddressDetails.customerId);
+			if(Objects.nonNull(customerDetails)) {
+				List<Address> addressDetailsList = customerAddressDetails.addressDetails;
+				List<Address> addressList = new ArrayList<>();
+				if(Objects.nonNull(addressDetailsList) && addressDetailsList.size() > 0) {
+					addressDetailsList.forEach((rec) -> {
+						Address address = new Address();
+						address.setAddressId(rec.getAddressId());
+						address.setCustomer(customerDetails.orElse(null));
+						address.setStreetAddress(rec.getStreetAddress());
+						address.setCity(rec.getCity());
+						address.setCountry(rec.getCountry());
+						address.setState(rec.getState());
+						address.setZip(rec.getZip());
+						addressRepository.save(address);
+					});
+					return ResponseEntity.ok("Address Updated Successfully");
+				}
+			}
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}catch (Exception e) {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
+	}
+
+	@GetMapping("/all/customer/details")
+	public List<Customer> getCustomerDetails(){
+		try{
+			return customerRepository.findAll();
+		}catch (Exception e) {
+			return null;
+		}
+	}
+
+	@GetMapping("/customer/details")
+	public Customer getCustomerDetails(@RequestParam Integer customerId){
+		try{
+			return customerRepository.findById(customerId).get();
+		}catch (Exception e) {
+			return null;
+		}
+	}
+
+	@DeleteMapping("/customer/details")
+	public ResponseEntity<Boolean> DeleteCustomerDetails(@RequestParam Integer customerId) {
+		try{
+			List<Integer> idList = addressRepository.findAllByCustomerCustomerId(customerId).stream().map(Address::getAddressId).collect(Collectors.toList());
+			addressRepository.deleteAllById(idList);
+			customerRepository.deleteById(customerId);
+			return ResponseEntity.ok(true);
+		}catch (Exception e) {
+			return  new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}
+	}
+
+	@DeleteMapping("/address/details")
+	public ResponseEntity<String> DeleteAddressDetails(@RequestParam Integer customerId) {
+		try{
+			List<Integer> idList = addressRepository.findAllByCustomerCustomerId(customerId).stream().map(Address::getAddressId).collect(Collectors.toList());
+			addressRepository.deleteAllById(idList);
+			return ResponseEntity.ok("Address Details Deleted Successfully");
+		}catch (Exception e) {
+			return  new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}
+	}
+
+	@DeleteMapping("/one/address")
+	public ResponseEntity<Boolean> DeleteOneAddressDetails(@RequestParam Integer customerId, @RequestParam Integer addressId) {
+		try{
+			addressRepository.DeleteByAddressIdAndCustomerCustomerId(addressId, customerId);
+			return ResponseEntity.ok(true);
+		}catch (Exception e) {
+			return  new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}
+	}
 }
 
 
